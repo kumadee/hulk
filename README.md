@@ -39,4 +39,15 @@ I have choose GPL for it. Okey. So, Go version of HULK licensed under GPLv3. See
 
 I am not related with original HULK utility in Python. Original HULK utility is authority of Barry Shteiman (http://sectorix.com). There are not any references to license in the original source then it is not under GPL. Ask author of the original utility about license. 
  
+# Docker
 
+Build in docker with the below command
+`docker build -t hulk:latest .`
+
+Run the image with the below command
+```bash
+docker run --rm hulk:v2 -site https://integration.shop1.shared01.oxidcloud.dev
+
+# Safe run auto terminates go routines when http status code > 500
+docker run --rm hulk:v2 -safe -site https://integration.shop1.shared01.oxidcloud.dev
+```

